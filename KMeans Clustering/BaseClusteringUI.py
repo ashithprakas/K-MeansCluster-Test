@@ -4,19 +4,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from FileReader import XYCoordinateExtractor
-from KMeansClusteringHelper import KMenasClustering
+import os
 
-class KMeansUI:
-    def __init__(self, root):
+class BaseClusteringUI:
+    def __init__(self, root, title="Clustering UI", mode="regular"):
         self.root = root
-        self.root.title("K-Means Clustering Interactive UI")
+        self.root.title(title)
+        self.mode = mode
+        
+        # Create output directories if they don't exist
+        self.output_dir = os.path.join("output", f"{mode}_kmeans")
+        os.makedirs(self.output_dir, exist_ok=True)
         
         # Load data
-        self.extractor = XYCoordinateExtractor("data.txt")
+        self.extractor = XYCoordinateExtractor(
+            os.path.join("input", "data.txt"),
+            os.path.join("input", "capacitenceData.txt")
+        )
         raw_points = self.extractor.extract_coordinates()
         # Convert list of dictionaries to numpy array of coordinates
         self.points = np.array([[point['x'], point['y']] for point in raw_points])
         self.labels = [point['label'] for point in raw_points]
+        self.capacitances = [point['capacitance'] for point in raw_points]
         
         # Create main frame
         self.main_frame = ttk.Frame(root, padding="10")
@@ -77,16 +86,19 @@ class KMeansUI:
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.centroid_text.configure(yscrollcommand=scrollbar.set)
 
+    def update_plot(self):
+        raise NotImplementedError("Subclasses must implement update_plot")
+
     def save_clusters(self):
         if self.current_labels is None:
             return
             
         k = self.current_k
-        filename = f"ClusterOutputk={k}.txt"
+        filename = os.path.join(self.output_dir, f"ClusterOutputk={k}.txt")
         
         try:
             with open(filename, 'w') as f:
-                f.write(f"Cluster Assignments for K={k}\n")
+                f.write(f"Cluster Assignments for {self.mode.title()} K-Means (K={k})\n")
                 f.write("=" * 50 + "\n\n")
                 
                 # Group labels by cluster
@@ -112,50 +124,4 @@ class KMeansUI:
                     
             print(f"Successfully saved cluster assignments to {filename}")
         except Exception as e:
-            print(f"Error saving clusters: {e}")
-
-    def update_plot(self):
-        try:
-            k = int(self.k_value.get())
-            self.current_k = k
-            
-            # Clear the plot
-            self.ax.clear()
-            
-            # Run K-means
-            kmeans = KMenasClustering(k=k)
-            self.current_labels = kmeans.fit(self.points)
-            
-            # Plot data points with cluster colors
-            scatter = self.ax.scatter(self.points[:, 0], self.points[:, 1], c=self.current_labels, cmap='rainbow', alpha=0.5)
-            
-            # Plot centroids
-            self.ax.scatter(kmeans.centroids[:, 0], kmeans.centroids[:, 1], 
-                          c='black', marker='x', s=200, label='Centroids')
-            
-            # Update centroid display
-            self.centroid_text.delete(1.0, tk.END)
-            self.centroid_text.insert(tk.END, f"K = {k}\n\n")
-            for i, centroid in enumerate(kmeans.centroids):
-                self.centroid_text.insert(tk.END, f"Centroid {i+1}:\n")
-                self.centroid_text.insert(tk.END, f"X: {centroid[0]:.4f}\n")
-                self.centroid_text.insert(tk.END, f"Y: {centroid[1]:.4f}\n\n")
-            
-            self.ax.set_title(f'K-Means Clustering (K={k})')
-            self.ax.set_xlabel('X')
-            self.ax.set_ylabel('Y')
-            self.ax.legend()
-            
-            # Update canvas
-            self.canvas.draw()
-            
-        except ValueError as e:
-            print(f"Error: {e}")
-
-def main():
-    root = tk.Tk()
-    app = KMeansUI(root)
-    root.mainloop()
-
-if __name__ == "__main__":
-    main() 
+            print(f"Error saving clusters: {e}") 
