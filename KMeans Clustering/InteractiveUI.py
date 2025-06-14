@@ -91,10 +91,10 @@ class KMeansUI:
                 
                 # Group labels by cluster
                 clusters = {}
-                for label, cluster_id in zip(self.labels, self.current_labels):
+                for label, cluster_id, point in zip(self.labels, self.current_labels, self.points):
                     if cluster_id not in clusters:
                         clusters[cluster_id] = []
-                    clusters[cluster_id].append(label)
+                    clusters[cluster_id].append((label, point))
                 
                 # Get the current centroids from the plot
                 centroids = self.ax.collections[-1].get_offsets()
@@ -106,8 +106,8 @@ class KMeansUI:
                     f.write(f"Centroid Coordinates: X = {centroids[cluster_id][0]:.4f}, Y = {centroids[cluster_id][1]:.4f}\n")
                     f.write("-" * 20 + "\n")
                     f.write("Points in this cluster:\n")
-                    for label in sorted(clusters[cluster_id]):
-                        f.write(f"{label}\n")
+                    for label, point in sorted(clusters[cluster_id]):
+                        f.write(f"{label}: X = {point[0]:.4f}, Y = {point[1]:.4f}\n")
                     f.write("\n")
                     
             print(f"Successfully saved cluster assignments to {filename}")
