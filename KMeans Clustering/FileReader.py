@@ -1,4 +1,5 @@
 import re
+import numpy as np
 
 class XYCoordinateExtractor:
     def __init__(self, coord_file, cap_file):
@@ -12,12 +13,27 @@ class XYCoordinateExtractor:
         """Extract mapping between labels and their numeric IDs from capacitance file"""
         try:
             with open(self.cap_file, 'r') as file:
+                in_name_map = False
                 for line in file:
-                    if line.startswith('*I') or line.startswith('*P'):
+                    line = line.strip()
+                    
+                    # Check for section markers
+                    if line == '*NAME_MAP':
+                        in_name_map = True
+                        continue
+                    elif line == '*PORTS':
+                        in_name_map = False
+                        continue
+                    
+                    # Only process lines within the name map section
+                    if in_name_map and re.match(r'^\*\d+', line):
                         parts = line.split()
-                        if len(parts) >= 4:
-                            numeric_id = parts[1]  # e.g., *10559
-                            label = parts[2]      # e.g., IF_ID_Pipeline_PC_Out_reg[10]
+                        if len(parts) >= 2:
+                            numeric_id = parts[0]  # e.g., *8688
+                            # Join the rest of the parts to get the full label and unescape brackets
+                            label = ' '.join(parts[1:])  # e.g., Data_Memory_inst_memory_reg\[3\]\[28\]
+                            # Replace escaped brackets with regular brackets
+                            label = label.replace('\\[', '[').replace('\\]', ']')
                             self.label_to_id[label] = numeric_id
         except FileNotFoundError:
             print(f"❌ Error: Capacitance file not found at path: {self.cap_file}")
@@ -26,37 +42,46 @@ class XYCoordinateExtractor:
         """Extract capacitance values for each numeric ID"""
         try:
             with open(self.cap_file, 'r') as file:
-                current_net = None
                 in_cap_section = False
 
                 for line in file:
                     line = line.strip()
 
-                    if line.startswith('*D_NET'):
-                        parts = line.split()
-                        current_net = parts[1]
+                    if line.startswith('*D_NET') or line.startswith('*RES') or line.startswith('*END') or line.startswith('*CONN'):
                         in_cap_section = False
-
                     elif line.startswith('*CAP'):
                         in_cap_section = True
+                        continue
 
-                    elif line.startswith('*RES') or line.startswith('*END'):
-                        in_cap_section = False
-
-                    elif in_cap_section and line:
+                    if in_cap_section and line:
                         parts = line.split()
-                        if len(parts) >= 3:
-                            try:
+                        # Skip if we don't have enough parts
+                        if len(parts) < 3:
+                            continue
+
+                        try:
+                            # The format can be either:
+                            # "1378 *9570:CK 3.67885e-05" or
+                            # "*9570:Q 3.68013e-05"
+                            # So we need to check if the first part is a number
+                            if parts[0].isdigit():
+                                # Skip the number and use the next parts
                                 node = parts[1]
-                                cap = float(parts[2])
-                                # Store capacitance with the numeric ID (e.g., *10559)
-                                if node.startswith('*'):
-                                    self.capacitances[node] = cap
-                                # Also store with the full node name (e.g., *10559:Q)
-                                self.capacitances[node] = cap
-                            except ValueError:
-                                # Skip lines that don't have valid capacitance values
-                                continue
+                                cap = np.float64(parts[2])
+                            else:
+                                # No number at start, use first two parts
+                                node = parts[0]
+                                cap = np.float64(parts[1])
+
+                            # Only store if the node has a CK suffix
+                            if node.startswith('*') and node.endswith(':CK'):
+                                # Extract just the numeric ID part (e.g., *9570 from *9570:CK)
+                                numeric_id = node.split(':')[0]
+                                self.capacitances[numeric_id] = cap
+
+                        except (ValueError, IndexError):
+                            # Skip lines that don't have valid capacitance values
+                            continue
 
         except FileNotFoundError:
             print(f"❌ Error: Capacitance file not found at path: {self.cap_file}")

@@ -10,19 +10,29 @@ class WeightedKMeansClustering:
         # Set random seed for reproducibility
         np.random.seed(random_state)
 
-    def initialize_weights(self, n_points):
-        # Initialize weights randomly between 0.1 and 1.0
-        self.weights = np.random.uniform(0.1, 1.0, n_points)
-        # Normalize weights
-        self.weights = self.weights / np.sum(self.weights)
+    def set_weights(self, weights):
+        """Set the weights to use for clustering (e.g., capacitance values)"""
+        # Convert to numpy array with higher precision
+        self.weights = np.array(weights, dtype=np.float64)
+        
+        # Check for zero or negative weights
+        if np.any(self.weights <= 0):
+            print("Warning: Found zero or negative weights. Converting to small positive values.")
+            # Replace zero or negative values with a small positive value
+            self.weights[self.weights <= 0] = np.min(self.weights[self.weights > 0]) * 0.1
+        
+        # Normalize weights to sum to 1 with higher precision
+        weight_sum = np.sum(self.weights)
+
+        self.weights = self.weights / weight_sum
 
     def fit(self, data_points):
         n_points = data_points.shape[0]
         n_features = data_points.shape[1]
         
-        # Initialize weights if not already done
+        # Ensure weights are set
         if self.weights is None:
-            self.initialize_weights(n_points)
+            raise ValueError("Weights must be set before fitting. Use set_weights() method.")
         
         # Initialize centroids randomly within the data bounds
         min_vals = np.amin(data_points, axis=0)

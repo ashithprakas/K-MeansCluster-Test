@@ -17,6 +17,10 @@ class WeightedKMeansUI(BaseClusteringUI):
             
             # Run Weighted K-means
             kmeans = WeightedKMeansClustering(k=k)
+            # Set the weights using capacitance values
+
+            kmeans.set_weights(self.capacitances)
+
             self.current_labels = kmeans.fit(self.points)
             
             # Plot data points with cluster colors
