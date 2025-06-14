@@ -10,9 +10,9 @@ class XYCoordinateExtractor:
             with open(self.file_path, 'r') as file:
                 text = file.read()
 
-            pattern = r"X\s*=\s*{([\d.]+),\s*Y\s*=\s*([\d.]+)}"
-            matches = re.findall(pattern, text)
-            self.xy_values = [[float(x), float(y)] for x, y in matches]
+            pattern = r"^(.*?)\s*:\s*X\s*=\s*{([\d.]+),\s*Y\s*=\s*([\d.]+)}"
+            matches = re.findall(pattern, text , re.MULTILINE)
+            self.xy_values = [{"label": label.strip(), "x": float(x), "y": float(y)} for label, x, y in matches]
             print(f"Total coordinates extracted: {len(self.xy_values)}")
             return self.xy_values
 
