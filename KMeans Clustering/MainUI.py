@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from RegularKMeansUI import RegularKMeansUI
 from WeightedKMeansUI import WeightedKMeansUI
+from EntropyKMeansUI import EntropyKMeansUI
 import sys
 
 class MainUI:
@@ -38,6 +39,14 @@ class MainUI:
             command=lambda: self.switch_ui("weighted")
         )
         self.weighted_btn.grid(row=0, column=1, padx=5, pady=5)
+        
+        # Entropy-based K-means button
+        self.entropy_btn = ttk.Button(
+            self.main_frame, 
+            text="Entropy K-Means", 
+            command=lambda: self.switch_ui("entropy")
+        )
+        self.entropy_btn.grid(row=0, column=2, padx=5, pady=5)
 
     def switch_ui(self, ui_type):
         # Clear current UI if it exists
@@ -50,8 +59,10 @@ class MainUI:
         
         if ui_type == "regular":
             self.current_ui = RegularKMeansUI(new_window)
-        else:
+        elif ui_type == "weighted":
             self.current_ui = WeightedKMeansUI(new_window)
+        else:  # entropy
+            self.current_ui = EntropyKMeansUI(new_window)
 
     def close_child_window(self, window):
         """Handle closing of child windows"""
